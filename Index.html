@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghana Prisons Service Aptitude Portal</title>
+    <style>
+        :root { --primary: #7b3f00; --secondary: #f4f4f4; --accent: #d4af37; --text: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--secondary); margin: 0; padding: 10px; }
+        .container { max-width: 900px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 10px solid var(--primary); }
+        header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .stats-bar { display: flex; justify-content: space-between; background: #222; color: white; padding: 15px; border-radius: 8px; margin: 20px 0; font-weight: bold; }
+        .question-text { font-size: 1.25rem; font-weight: bold; margin-bottom: 20px; color: #111; min-height: 60px; }
+        .options-grid { display: grid; gap: 12px; }
+        .opt-btn { padding: 15px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: 0.2s; background: white; text-align: left; font-size: 1rem; font-weight: 500; }
+        .correct-flash { background: #2e7d32 !important; color: white !important; border-color: #1b5e20 !important; }
+        .wrong-flash { background: #d32f2f !important; color: white !important; border-color: #b71c1c !important; }
+        #results-screen { display: none; text-align: center; }
+        .category-tag { background: var(--accent); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; margin-bottom: 10px; display: inline-block; }
+        .btn-main { background: var(--primary); color: white; padding: 12px 30px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; margin-top: 20px;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Ghana Prisons Service</h1>
+        <p>Aptitude Test: 125 Questions (30 Minutes)</p>
+    </header>
+
+    <div id="quiz-ui">
+        <div class="stats-bar">
+            <span>Question: <span id="q-num">1</span> / 125</span>
+            <span style="color: #d4af37;">Score: <span id="live-score">0</span></span>
+            <span id="timer-display">Time: 30:00</span>
+        </div>
+
+        <div id="q-container">
+            <span id="q-cat" class="category-tag">General Knowledge</span>
+            <div id="q-text" class="question-text">Loading question...</div>
+            <div id="q-options" class="options-grid"></div>
+        </div>
+    </div>
+
+    <div id="results-screen">
+        <h2>Examination Complete</h2>
+        <h1 style="font-size: 4rem; color: var(--primary);" id="final-score">0%</h1>
+        <div id="summary-text"></div>
+        <button class="btn-main" onclick="location.reload()">Re-take Examination</button>
+    </div>
+</div>
+
+<script>
+    const quizData = [
+        // QUESTIONS 1-100 (REPLICATED FROM PREVIOUS PRISONS PDF DATA) [cite: 645-1279]
+        { cat: "GENERAL KNOWLEDGE", q: "What is the supreme governing law of the Ghana Prisons Service?", a: ["Police Service Act", "Prisons Service Decree, 1972 (NRCD 46)", "Armed Forces Act", "Immigration Act"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "Who is the Director-General of the Ghana Prisons Service (as of Nov 2025)?", a: ["Mr. Isaac Kofi Egyir", "Mrs. Patience Baffoe-Bonnie", "Mr. Patrick Darko Missah", "Mr. Samuel Amadu"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "The core values of the Ghana Prisons Service are:", a: ["Service and Integrity", "Vigilance, Humanity, and Fortitude", "Protection and Service", "God and Country"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "The Ghana Prisons Service operates under which Ministry?", a: ["Ministry of Justice", "Ministry of National Security", "Ministry of the Interior", "Ministry of Defence"], c: 2 },
+        { cat: "GENERAL KNOWLEDGE", q: "Which of these is NOT a function of the Ghana Prisons Service?", a: ["Safe custody", "Reformation", "Prosecution of criminals in court", "Rehabilitation"], c: 2 },
+        { cat: "GENERAL KNOWLEDGE", q: "The Prisons Officers Training School (POTS) is located at:", a: ["Ankaful", "Roman Ridge, Accra", "Winneba", "Kumasi"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "Who is the Chairman of the Prisons Service Council?", a: ["Director-General", "Vice President of Ghana", "Minister of Interior", "Chief Justice"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "What is the highest rank in the Ghana Prisons Service?", a: ["Inspector General", "Commissioner", "Director-General of Prisons", "Chief Superintendent"], c: 2 },
+        { cat: "GENERAL KNOWLEDGE", q: "The lowest rank for a junior officer (recruit) is:", a: ["Lance Corporal", "Second Class Officer", "Constable", "Private"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "Recidivism refers to:", a: ["Promotion", "Release", "A convicted criminal re-offending", "Transfer"], c: 2 },
+        { cat: "GENERAL KNOWLEDGE", q: "Which prison is a 'Medium Security Prison'?", a: ["Nsawam", "James Camp", "Ankaful Main Camp", "Kumasi Central"], c: 0 },
+        { cat: "GENERAL KNOWLEDGE", q: "The 'Borstal Institute' handles:", a: ["Females", "Juvenile offenders", "Death row", "Politicians"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "In which year did the Prisons Service become autonomous from the Police?", a: ["1957", "1964", "1972", "1992"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "Who was the first Ghanaian Director of Prisons?", a: ["Mr. C.B. Moses", "Mr. I.W. Abban", "Mr. J.A. Ajavon", "Mr. E.R.T. Madjitey"], c: 0 },
+        { cat: "GENERAL KNOWLEDGE", q: "The color of the ceremonial uniform is:", a: ["Black", "Blue", "Brown/Khaki", "Green"], c: 2 },
+        { cat: "GENERAL KNOWLEDGE", q: "Which of these is a 'Camp Prison'?", a: ["James Camp Prison", "Tamale Central", "Sekondi Central", "Navrongo Central"], c: 0 },
+        { cat: "GENERAL KNOWLEDGE", q: "The term 'Remand Prisoner' means:", a: ["Sentenced", "Awaiting trial", "On parole", "Death row"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "Vision of the Prisons Service:", a: ["Best in Africa", "Building world-class Service for public safety", "Arrest all", "Guard walls"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "Administrative regions the Service operates in:", a: ["10", "16", "14", "12"], c: 1 },
+        { cat: "GENERAL KNOWLEDGE", q: "Amnesty is granted by:", a: ["DG", "Chief Justice", "The President", "Police"], c: 2 },
+        { cat: "GENERAL KNOWLEDGE", q: "Rank immediately after Corporal:", a: ["Sergeant", "Lance Corporal", "Inspector", "Chief Officer"], c: 0 },
+        { cat: "GENERAL KNOWLEDGE", q: "Which arm of government sentences criminals?", a: ["Legislature", "Executive", "Judiciary", "Police"], c: 2 },
+        { cat: "MATHEMATICS", q: "Solve: 15% of 300.", a: ["30", "45", "50", "60"], c: 1 },
+        { cat: "MATHEMATICS", q: "60km in 1 hour, how far in 30 minutes?", a: ["20km", "30km", "40km", "120km"], c: 1 },
+        { cat: "MATHEMATICS", q: "Solve for x: 5x + 10 = 35", a: ["3", "4", "5", "6"], c: 2 },
+        { cat: "MATHEMATICS", q: "Value of 12 squared (12²)?", a: ["24", "100", "122", "144"], c: 3 },
+        { cat: "MATHEMATICS", q: "Simplify: 3/4 + 1/2", a: ["4/6", "5/4", "1", "3/8"], c: 1 },
+        { cat: "MATHEMATICS", q: "8 hours a day, how many in 5 days?", a: ["35", "40", "45", "48"], c: 1 },
+        { cat: "MATHEMATICS", q: "Average of: 10, 20, 30, 40.", a: ["20", "25", "30", "35"], c: 1 },
+        { cat: "MATHEMATICS", q: "Odd one out: 4, 6, 9, 10", a: ["4", "6", "9", "10"], c: 2 },
+        { cat: "MATHEMATICS", q: "Perimeter of square with side 5cm.", a: ["15cm", "20cm", "25cm", "10cm"], c: 1 },
+        { cat: "MATHEMATICS", q: "10 prisoners share 50 loaves equally, each gets?", a: ["2", "4", "5", "10"], c: 2 },
+        { cat: "MATHEMATICS", q: "Convert 0.6 to a fraction.", a: ["3/5", "2/5", "1/2", "4/5"], c: 0 },
+        { cat: "MATHEMATICS", q: "Next number: 100, 95, 90, 85, ...?", a: ["84", "80", "75", "70"], c: 1 },
+        { cat: "MATHEMATICS", q: "Multiply: 1.5 x 4", a: ["5.0", "6.0", "4.5", "7.0"], c: 1 },
+        { cat: "MATHEMATICS", q: "9 years reduced by 1/3, how many left?", a: ["3", "5", "6", "8"], c: 2 },
+        { cat: "MATHEMATICS", q: "Which is larger: 50% or 0.6?", a: ["50%", "0.6", "Equal", "None"], c: 1 },
+        { cat: "MATHEMATICS", q: "Subtract 28 from 100.", a: ["62", "72", "82", "78"], c: 1 },
+        { cat: "MATHEMATICS", q: "Minutes in 1 hour 45 minutes?", a: ["100", "105", "115", "145"], c: 1 },
+        { cat: "MATHEMATICS", q: "Soap GH 5. How much for 12?", a: ["50", "55", "60", "65"], c: 2 },
+        { cat: "MATHEMATICS", q: "Roman Numeral for 10?", a: ["V", "X", "L", "C"], c: 1 },
+        { cat: "MATHEMATICS", q: "Divide 500 by 20.", a: ["20", "25", "30", "50"], c: 1 },
+        { cat: "ENGLISH", q: "Correct spelling:", a: ["Superintendent", "Suprintendent", "Superintendant", "Supretendent"], c: 0 },
+        { cat: "ENGLISH", q: "Synonym for Incarcerate:", a: ["Free", "Imprison", "Help", "Judge"], c: 1 },
+        { cat: "ENGLISH", q: "Antonym for Guilty:", a: ["Charged", "Blamed", "Innocent", "Suspect"], c: 2 },
+        { cat: "ENGLISH", q: "Correct spelling:", a: ["Paroll", "Parole", "Perole", "Patrol"], c: 1 },
+        { cat: "ENGLISH", q: "Correct verb: The officer ____ the gate.", a: ["lock", "locked", "locking", "locks"], c: 1 },
+        { cat: "ENGLISH", q: "Criminals are kept in a:", a: ["Penitentiary", "School", "Market", "Hospital"], c: 0 },
+        { cat: "ENGLISH", q: "Turn over a new leaf means:", a: ["Read book", "Change behavior for better", "Clean", "Escape"], c: 1 },
+        { cat: "ENGLISH", q: "Plural of Handcuff:", a: ["Handcuffes", "Handcuffs", "Handscuff", "Hands-cuff"], c: 1 },
+        { cat: "ENGLISH", q: "Odd word out:", a: ["Lawyer", "Judge", "Prosecutor", "Carpenter"], c: 3 },
+        { cat: "ENGLISH", q: "Complete: As bold as a ____", a: ["Lion", "Mouse", "Chicken", "Fish"], c: 0 },
+        { cat: "ENGLISH", q: "Charged ____ murder.", a: ["of", "with", "for", "by"], c: 1 },
+        { cat: "ENGLISH", q: "Correct spelling:", a: ["Discipline", "Descipline", "Disipline", "Dicipline"], c: 0 },
+        { cat: "ENGLISH", q: "Meaning of Acquit:", a: ["Punish", "Declare not guilty", "Arrest", "Imprison"], c: 1 },
+        { cat: "ENGLISH", q: "Past tense of Run:", a: ["Runned", "Ran", "Running", "Rans"], c: 1 },
+        { cat: "ENGLISH", q: "The inmates ____ eating lunch.", a: ["is", "was", "are", "be"], c: 2 },
+        { cat: "ENGLISH", q: "Synonym for Rehabilitation:", a: ["Punishment", "Restoration", "Destruction", "Isolation"], c: 1 },
+        { cat: "ENGLISH", q: "Opposite of Legal:", a: ["Illegal", "Unlegal", "Dislegal", "Imlegal"], c: 0 },
+        { cat: "ENGLISH", q: "Contraband refers to:", a: ["Allowed", "Prohibited items", "Food", "Clothing"], c: 1 },
+        { cat: "ENGLISH", q: "Which is a noun?", a: ["Sing", "Prison", "Quickly", "Blue"], c: 1 },
+        { cat: "ENGLISH", q: "Law and ____", a: ["Peace", "Order", "Rules", "Command"], c: 1 },
+        { cat: "LOGIC / GK", q: "Judge is to Court as Director-General is to ____?", a: ["Police", "Prison HQ", "Hospital", "School"], c: 1 },
+        { cat: "LOGIC / GK", q: "Yesterday Friday, day after tomorrow?", a: ["Sunday", "Monday", "Tuesday", "Saturday"], c: 1 },
+        { cat: "LOGIC / GK", q: "Why uniforms?", a: ["Fashion", "Identification/Security", "Warmth", "Money"], c: 1 },
+        { cat: "LOGIC / GK", q: "Next number: 2, 5, 8, 11, ____", a: ["12", "13", "14", "15"], c: 2 },
+        { cat: "LOGIC / GK", q: "Vice President (Nov 2025)?", a: ["Prof. Naana Opoku-Agyemang", "Dr. Bawumia", "Amissah Arthur", "Aliu Mahama"], c: 0 },
+        { cat: "LOGIC / GK", q: "Nsawam Prison region?", a: ["Accra", "Eastern", "Central", "Ashanti"], c: 1 },
+        { cat: "LOGIC / GK", q: "Sword is to Sheath as Gun is to ____?", a: ["Holster", "Blade", "Knife", "Cut"], c: 0 },
+        { cat: "LOGIC / GK", q: "Goal of Agricultural Wing?", a: ["Export", "Food security/revenue", "Punishment", "Clear land"], c: 1 },
+        { cat: "LOGIC / GK", q: "NOT allowed in cell:", a: ["Bible", "Mobile Phone", "Toothbrush", "Soap"], c: 1 },
+        { cat: "LOGIC / GK", q: "Capital Punishment is:", a: ["Life", "Death penalty", "Fine", "Community"], c: 1 },
+        { cat: "LOGIC / GK", q: "Black Star stands for:", a: ["Emancipation", "Minerals", "People", "Vegetation"], c: 0 },
+        { cat: "LOGIC / GK", q: "Life Sentence typically (admin)?", a: ["10", "20-25", "50", "5"], c: 1 },
+        { cat: "LOGIC / GK", q: "President (Nov 2025)?", a: ["John Mahama", "Nana Akufo-Addo", "Dr. Bawumia", "Alan Kyerematen"], c: 0 },
+        { cat: "LOGIC / GK", q: "If A=1, B=2, C=3, what is BAD?", a: ["6", "7", "5", "8"], c: 1 },
+        { cat: "LOGIC / GK", q: "Odd one: Handcuffs, Baton, Whistle, TV", a: ["Handcuffs", "Baton", "Whistle", "TV"], c: 3 },
+        { cat: "LOGIC / GK", q: "Continent of Ghana?", a: ["Europe", "Asia", "Africa", "America"], c: 2 },
+        { cat: "LOGIC / GK", q: "Official language?", a: ["Twi", "Ga", "English", "Hausa"], c: 2 },
+        { cat: "LOGIC / GK", q: "A Pardon is:", a: ["Innocence", "Forgiveness", "Escaping", "Fine"], c: 1 },
+        { cat: "LOGIC / GK", q: "1, 4, 9, 16, Next?", a: ["30", "35", "36", "40"], c: 2 },
+        { cat: "LOGIC / GK", q: "Juvenile is:", a: ["Old", "Young", "Rich", "Sickly"], c: 1 },
+        { cat: "LOGIC / GK", q: "Ankaful Max Security location?", a: ["Accra", "Cape Coast", "Sekondi", "Sunyani"], c: 1 },
+        { cat: "LOGIC / GK", q: "Formerly known as:", a: ["Police", "Gold Coast Prisons Dept", "Army", "Guards"], c: 1 },
+        { cat: "LOGIC / GK", q: "Why prisons?", a: ["Suffer", "Safety/rehabilitation", "Store", "Train"], c: 1 },
+        { cat: "LOGIC / GK", q: "Valid rank:", a: ["General", "Chief Superintendent", "King", "Master"], c: 1 },
+        { cat: "LOGIC / GK", q: "Fire in yard first step?", a: ["Run", "Raise alarm", "Photos", "Ignore"], c: 1 },
+        { cat: "LOGIC / GK", q: "Inmate means:", a: ["Officer", "Prisoner", "Visitor", "Lawyer"], c: 1 },
+        { cat: "LOGIC / GK", q: "Flag designer:", a: ["Theodosia Okoh", "Nkrumah", "Big Six", "Elizabeth"], c: 0 },
+        { cat: "LOGIC / GK", q: "Anthem title:", a: ["God Bless Africa", "God Bless Our Homeland Ghana", "Yen Ara", "Arise"], c: 1 },
+        { cat: "LOGIC / GK", q: "NOT a region:", a: ["Oti", "Bono East", "Gold Coast", "Savannah"], c: 2 },
+        { cat: "LOGIC / GK", q: "5 cars wheels?", a: ["15", "20", "25", "10"], c: 1 },
+        { cat: "LOGIC / GK", q: "Officer must exhibit:", a: ["Rudeness", "Integrity/Discipline", "Laziness", "Fear"], c: 1 },
+        { cat: "LOGIC / GK", q: "Escort duties:", a: ["Dancing", "Accompanying safely", "Release", "Cook"], c: 1 },
+        { cat: "LOGIC / GK", q: "Capital of Northern Region:", a: ["Wa", "Bolgatanga", "Tamale", "Damongo"], c: 2 },
+        { cat: "LOGIC / GK", q: "Required to vote:", a: ["Voter ID", "Birth", "School", "NHIS"], c: 0 },
+        { cat: "LOGIC / GK", q: "Why join?", a: ["Job", "Beat", "Security/reformation", "Friend"], c: 2 },
+
+        // NEW CURRENT AFFAIRS / EXTRA PRISONS QUESTIONS (101-125) 
+        { cat: "CURRENT AFFAIRS", q: "Which international body did Ghana join in 1957?", a: ["UN", "EU", "NATO", "ASEAN"], c: 0 },
+        { cat: "PRISONS INFO", q: "What is the motto of the Prisons Service?", a: ["Vigilance and Humanity", "Integrity", "Justice", "Freedom"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "Ghana's currency is issued by?", a: ["ADB", "Bank of Ghana", "GCB", "ECB"], c: 1 },
+        { cat: "CURRENT AFFAIRS", q: "Who is the Speaker of Parliament?", a: ["Alban Bagbin", "Aaron Mike Oquaye", "Doe Adjaho", "Peter Ala Adjetey"], c: 0 },
+        { cat: "PRISONS INFO", q: "Officer Training School location?", a: ["Roman Ridge", "Ankaful", "Nswam", "Ho"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "How many members are in Ghana's Parliament?", a: ["200", "230", "275", "300"], c: 2 },
+        { cat: "CURRENT AFFAIRS", q: "Which ocean is south of Ghana?", a: ["Indian", "Pacific", "Atlantic", "Arctic"], c: 2 },
+        { cat: "PRISONS INFO", q: "Who can grant a pardon?", a: ["President", "Chief Justice", "IGP", "Minister"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "The Akosombo dam is on which river?", a: ["Pra", "Ankobra", "Volta", "Tano"], c: 2 },
+        { cat: "CURRENT AFFAIRS", q: "Independence day is?", a: ["March 6", "July 1", "Jan 7", "Sept 21"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "Which region has the largest landmass?", a: ["Ashanti", "Savannah", "Northern", "Western"], c: 1 },
+        { cat: "PRISONS INFO", q: "A prisoner sentenced for life is called?", a: ["Lifer", "Juvenile", "Remand", "Escort"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "What is the highest mountain in Ghana?", a: ["Mt. Afadja", "Mt. Atwea", "Mt. Gemi", "Mt. Krobo"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "Who was the first President?", a: ["Busia", "Rawlings", "Nkrumah", "Akufo-Addo"], c: 2 },
+        { cat: "CURRENT AFFAIRS", q: "Which region has the most parliamentary seats?", a: ["Greater Accra", "Ashanti", "Eastern", "Central"], c: 1 },
+        { cat: "CURRENT AFFAIRS", q: "How many years is a Presidential term?", a: ["4", "5", "6", "7"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "The 'Big Six' refers to?", a: ["Ministers", "Founding fathers", "Rivers", "Mountains"], c: 1 },
+        { cat: "PRISONS INFO", q: "Can an officer accept gifts from inmates?", a: ["Yes", "No", "Sometimes", "Only food"], c: 1 },
+        { cat: "CURRENT AFFAIRS", q: "What is the largest artificial lake in the world?", a: ["Lake Volta", "Lake Bosomtwe", "Lake Victoria", "Lake Chad"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "Ghana's 16th region created in 2018?", a: ["Oti", "Western North", "Savannah", "Bono"], c: 0 },
+        { cat: "PRISONS INFO", q: "Medium security prison location?", a: ["Nsawam", "Ankaful", "Kumasi", "Tarkwa"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "Main export of Ghana?", a: ["Gold", "Timber", "Cocoa", "Oil"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "Official residence of the President?", a: ["Osu Castle", "Jubilee House", "Flagstaff House", "State House"], c: 1 },
+        { cat: "PRISONS INFO", q: "Core value for treating inmates?", a: ["Humanity", "Brutality", "Silence", "Speed"], c: 0 },
+        { cat: "CURRENT AFFAIRS", q: "Head of the Judiciary?", a: ["Chief Justice", "Speaker", "President", "Attorney General"], c: 0 }
+    ];
+
+    let current = 0;
+    let correctCount = 0;
+    let timeLeft = 1800;
+    let acceptingAnswers = true;
+
+    function startTimer() {
+        const timer = setInterval(() => {
+            timeLeft--;
+            let mins = Math.floor(timeLeft / 60);
+            let secs = timeLeft % 60;
+            document.getElementById('timer-display').innerText = `Time: ${mins}:${secs < 10 ? '0'+secs : secs}`;
+            if (timeLeft <= 0) { clearInterval(timer); showResults(); }
+        }, 1000);
+    }
+
+    function render() {
+        if (current >= quizData.length) { showResults(); return; }
+        acceptingAnswers = true;
+        const q = quizData[current];
+        document.getElementById('q-num').innerText = current + 1;
+        document.getElementById('q-cat').innerText = q.cat;
+        document.getElementById('q-text').innerText = q.q;
+        
+        const optionsDiv = document.getElementById('q-options');
+        optionsDiv.innerHTML = '';
+        q.a.forEach((opt, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'opt-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(i, btn);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selected, btn) {
+        if (!acceptingAnswers) return;
+        acceptingAnswers = false;
+        const correctIndex = quizData[current].c;
+        const allButtons = document.querySelectorAll('.opt-btn');
+        if (selected === correctIndex) {
+            btn.classList.add('correct-flash');
+            correctCount++;
+            document.getElementById('live-score').innerText = correctCount;
+        } else {
+            btn.classList.add('wrong-flash');
+            allButtons[correctIndex].classList.add('correct-flash');
+        }
+        setTimeout(() => {
+            current++;
+            render();
+        }, 1500);
+    }
+
+    function showResults() {
+        document.getElementById('quiz-ui').style.display = 'none';
+        document.getElementById('results-screen').style.display = 'block';
+        let percent = Math.round((correctCount / quizData.length) * 100);
+        document.getElementById('final-score').innerText = percent + "%";
+        document.getElementById('summary-text').innerHTML = `<p>Final Score: <strong>${correctCount}</strong> out of ${quizData.length}</p>`;
+    }
+
+    startTimer();
+    render();
+</script>
+</body>
+</html>
